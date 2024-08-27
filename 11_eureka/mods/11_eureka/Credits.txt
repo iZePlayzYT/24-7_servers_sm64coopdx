@@ -1,0 +1,23 @@
+Here are people who did something for the port directly or indirectly
+
+--- Blocky (Act Selector Color)
+
+--- SonicDark and Blocky (CustomSecretModels)
+
+--- Er1ck (Maked a solution to alleviate the scrollings textures charge, now it works yay!)
+
+--- Sunk (360 Cannons, NoSteepJumps, Faster Hangable, Switch Star)
+
+--- EmeraldLockdown (Helped me fixing the goomba bhv)
+
+--- BlackJoystick (Original creator of song change Surface)
+
+--- Woissil (Original Goomba Code)
+
+--- f_bell (Treadmill code from Inertia Factory, peak hack)
+
+--- Agent X, Sunk (Exclamation Box for custom contents)
+
+--- CyanideJam (Icons for other characters, really cool thanks!)
+
+Thanks to them the port was easier to complete.
