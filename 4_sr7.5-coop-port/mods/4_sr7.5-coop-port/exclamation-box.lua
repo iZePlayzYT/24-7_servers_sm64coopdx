@@ -28,6 +28,10 @@ local spawn_triangle_break_particles = spawn_triangle_break_particles
 local play_sound = play_sound
 local cur_obj_hide = cur_obj_hide
 
+define_custom_obj_fields({
+    oStarId = "u32"
+})
+
 -------------------------
 ------Helper tables------
 -------------------------
@@ -93,13 +97,6 @@ local sExclamationBoxContents = {
     { 34, 0, 3, E_MODEL_MARIOS_WING_CAP,  id_bhvWingCap },
     { 35, 0, 3, E_MODEL_MARIOS_METAL_CAP,  id_bhvMetalCap },
     { 36, 0, 3, E_MODEL_MARIOS_CAP,  id_bhvVanishCap },
-    { 99, 0, 0, E_MODEL_NONE, nil }
-}
-
-_G.CustomExclamationBox = {
-    getContentsTable = function ()
-        return sExclamationBoxContents
-    end,
 }
 
 ----------------------------
@@ -469,3 +466,61 @@ function bhv_custom_exclamation_box_loop(obj)
 end
 
 id_bhvExclamationBox = hook_behavior(id_bhvExclamationBox, OBJ_LIST_SURFACE, true, bhv_custom_exclamation_box_init, bhv_custom_exclamation_box_loop, "bhvExclamationBox")
+
+-- Hooking the star directly might break something can't really do anything about it
+---@param obj Object
+local function bhv_custom_spawned_star_init(obj)
+    network_init_object(obj, false, {
+        "oStarId"
+    })
+end
+
+---@param obj Object
+local function bhv_custom_spawned_star_loop(obj)
+    if obj.oSyncID ~= 0 and obj.globalPlayerIndex == gNetworkPlayers[0].globalIndex then
+        network_send_object(obj, true)
+    end
+    obj.oBehParams = obj.oBehParams | (obj.oStarId << 24)
+
+    if obj.oTimer > 150 then
+        obj.oIntangibleTimer = 0
+    end
+
+    local model = E_MODEL_TRANSPARENT_STAR
+    if ((1 << ((obj.oBehParams >> 24) & 0xFF)) & save_file_get_star_flags(get_current_save_file_num() - 1, gNetworkPlayers[0].currCourseNum - 1)) == 0 then
+        model = E_MODEL_STAR
+    end
+    obj_set_model_extended(obj, model)
+end
+
+id_bhvSpawnedStar = hook_behavior(id_bhvSpawnedStar, OBJ_LIST_GENACTOR, false, bhv_custom_spawned_star_init, bhv_custom_spawned_star_loop, "bhvSpawnedStar")
+
+_G.CustomExclamationBox = {
+    getContentsTable = function ()
+        return sExclamationBoxContents
+    end,
+    getNewExclamationBoxId = function ()
+        return id_bhvExclamationBox
+    end,
+    getNewSpawnedStarId = function ()
+        return id_bhvSpawnedStar
+    end
+}
+
+local cutscene_timer = 180
+hook_event(HOOK_UPDATE, function ()
+    ---@type MarioState
+    local m = gMarioStates[0]
+    if not m.area or not m.area.camera or not m.area.camera.cutscene then return end
+
+    if m.area.camera.cutscene == CUTSCENE_STAR_SPAWN then
+        cutscene_timer = cutscene_timer - 1
+        if cutscene_timer <= 0 then
+            m.freeze = 0
+            m.area.camera.cutscene = 0
+            clear_time_stop_flags(TIME_STOP_ENABLED | TIME_STOP_MARIO_AND_DOORS)
+        end
+    else
+        cutscene_timer = 180
+    end
+end)
