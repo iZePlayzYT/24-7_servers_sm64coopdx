@@ -27,6 +27,7 @@ local spawn_mist_particles_variable = spawn_mist_particles_variable
 local spawn_triangle_break_particles = spawn_triangle_break_particles
 local play_sound = play_sound
 local cur_obj_hide = cur_obj_hide
+local network_init_object = network_init_object
 
 define_custom_obj_fields({
     oStarId = "u32"
@@ -99,6 +100,19 @@ local function star_spawn_cutscene(obj)
     obj.activeFlags = obj.activeFlags | ACTIVE_FLAG_INITIATED_TIME_STOP
 end
 
+---@return boolean
+local function is_current_area_sync_valid()
+    local np = gNetworkPlayers
+    for i = 1, MAX_PLAYERS - 1, 1 do
+        if np[i] and np[i].connected and
+        (not np[i].currLevelSyncValid or not np[i].currAreaSyncValid) and
+        is_player_in_local_area(gMarioStates[i]) ~= 0 then
+            return false
+        end
+    end
+    return true
+end
+
 --- @param obj Object
 --- @param hitbox ObjectHitbox
 local function obj_set_hitbox(obj, hitbox)
@@ -129,7 +143,7 @@ end
 local function spawn_object(parent, model, behavior)
     if not parent then return nil end
     local obj = spawn_sync_object(behavior, model, parent.oPosX, parent.oPosY, parent.oPosZ, nil)
-    if not obj then print("failed spawn"); return nil end
+    if not obj then error("failed spawn"); return nil end
 
     obj_copy_pos_and_angle(obj, parent)
 
@@ -154,12 +168,6 @@ local function spawn_content(parent, model, behavior, first_byte, second_byte, n
     obj.oMoveAngleYaw = nearest_mario_object and nearest_mario_object.oMoveAngleYaw or 0
     obj.globalPlayerIndex = nearest_mario_object and nearest_mario_object.globalPlayerIndex or 0
 
-    -- Not assigning a parent object breaks the cutscene
-    -- so it needs to be done manually like this
-    if obj_has_behavior_id(obj, id_bhvSpawnedStar) == 1 then
-        star_spawn_cutscene(obj)
-    end
-
     if parent.oBehParams & 0xFF000000 == 0 then
         obj.oBehParams = obj.oBehParams | first_byte << 24
     else
@@ -167,6 +175,15 @@ local function spawn_content(parent, model, behavior, first_byte, second_byte, n
     end
 
     obj.oBehParams = obj.oBehParams | (second_byte << 16)
+
+    -- Not assigning a parent object breaks the cutscene
+    -- so it needs to be done manually like this
+    if obj_has_behavior_id(obj, id_bhvSpawnedStar) == 1 then
+        star_spawn_cutscene(obj)
+        obj.oStarId = (parent.oBehParams >> 24) & 0xFF
+    end
+
+    parent.oBehParams = obj.oBehParams
 
     return obj
 end
@@ -213,21 +230,7 @@ local function exclamation_box_spawn_contents(exclamation_box_obj, desired_index
             if not spawned_object then
                 return false
             end
-
-            network_send_object(spawned_object, true)
             break
-        end
-    end
-    return true
-end
-
----@return boolean
-local function is_current_area_sync_valid()
-    local np
-    for i = 0, MAX_PLAYERS - 1, 1 do
-        np = gNetworkPlayers[i]
-        if np and np.connected and (not np.currLevelSyncValid or not np.currAreaSyncValid) then
-            return false
         end
     end
     return true
@@ -425,8 +428,8 @@ local function obj_call_action_function(obj, actionFunctions)
 end
 
 --- @param obj Object
-function bhv_custom_exclamation_box_init(obj)
-    obj.oFlags = (OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE | OBJ_FLAG_SET_FACE_YAW_TO_MOVE_YAW | OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE)
+local function bhv_custom_exclamation_box_init(obj)
+    obj.oFlags = (OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE | OBJ_FLAG_SET_FACE_YAW_TO_MOVE_YAW)
     obj.collisionData = gGlobalObjectCollisionData.exclamation_box_outline_seg8_collision_08025F78
     obj.oCollisionDistance = 300
     obj.oHomeX = obj.oPosX
@@ -441,7 +444,7 @@ function bhv_custom_exclamation_box_init(obj)
 end
 
 --- @param obj Object
-function bhv_custom_exclamation_box_loop(obj)
+local function bhv_custom_exclamation_box_loop(obj)
     cur_obj_scale(2)
     obj_call_action_function(obj, sExclamationBoxActions)
 end
