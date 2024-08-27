@@ -29,6 +29,10 @@ local spawn_triangle_break_particles = spawn_triangle_break_particles
 local play_sound = play_sound
 local cur_obj_hide = cur_obj_hide
 
+define_custom_obj_fields({
+    oStarId = "u32"
+})
+
 -------------------------
 ------Helper tables------
 -------------------------
@@ -75,12 +79,6 @@ local sExclamationBoxContents = {
     { 15, 0, 0, E_MODEL_CHUCKYA,  id_bhvChuckya },
     { 16, 0, 10, E_MODEL_STAR,  id_bhvSpawnedStar }, -- ! Fake star
     { 17, 0, 6, E_MODEL_STAR,  id_bhvSpawnedStar },
-}
-
-_G.CustomExclamationBox = {
-    getContentsTable = function ()
-        return sExclamationBoxContents
-    end,
 }
 
 ----------------------------
@@ -461,7 +459,7 @@ end
 
 ---@param obj Object
 local function bhv_custom_spawned_star_loop(obj)
-    if obj.globalPlayerIndex == gNetworkPlayers[0].globalIndex then
+    if obj.oSyncID ~= 0 and obj.globalPlayerIndex == gNetworkPlayers[0].globalIndex then
         network_send_object(obj, true)
     end
     obj.oBehParams = obj.oBehParams | (obj.oStarId << 24)
@@ -469,6 +467,12 @@ local function bhv_custom_spawned_star_loop(obj)
     if obj.oTimer > 150 then
         obj.oIntangibleTimer = 0
     end
+
+    local model = E_MODEL_TRANSPARENT_STAR
+    if ((1 << ((obj.oBehParams >> 24) & 0xFF)) & save_file_get_star_flags(get_current_save_file_num() - 1, gNetworkPlayers[0].currCourseNum - 1)) == 0 then
+        model = E_MODEL_STAR
+    end
+    obj_set_model_extended(obj, model)
 end
 
 id_bhvSpawnedStar = hook_behavior(id_bhvSpawnedStar, OBJ_LIST_GENACTOR, false, bhv_custom_spawned_star_init, bhv_custom_spawned_star_loop, "bhvSpawnedStar")
