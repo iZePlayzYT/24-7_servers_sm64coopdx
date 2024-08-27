@@ -11,7 +11,6 @@ local cutscene_object = cutscene_object
 local set_time_stop_flags = set_time_stop_flags
 local cur_obj_become_tangible = cur_obj_become_tangible
 local spawn_sync_object = spawn_sync_object
-local get_behavior_from_id = get_behavior_from_id
 local obj_copy_pos_and_angle = obj_copy_pos_and_angle
 local nearest_mario_state_to_object = nearest_mario_state_to_object
 local network_send_object = network_send_object
@@ -28,6 +27,11 @@ local spawn_mist_particles_variable = spawn_mist_particles_variable
 local spawn_triangle_break_particles = spawn_triangle_break_particles
 local play_sound = play_sound
 local cur_obj_hide = cur_obj_hide
+local network_init_object = network_init_object
+
+define_custom_obj_fields({
+    oStarId = "u32"
+})
 
 -------------------------
 ------Helper tables------
@@ -77,12 +81,6 @@ local sExclamationBoxContents = {
     { 17, 0, 6, E_MODEL_STAR,  id_bhvSpawnedStar },
 }
 
-_G.CustomExclamationBox = {
-    getContentsTable = function ()
-        return sExclamationBoxContents
-    end,
-}
-
 ----------------------------
 ------Helper functions------
 ----------------------------
@@ -100,6 +98,19 @@ local function star_spawn_cutscene(obj)
     gMarioStates[0].freeze = 60
     set_time_stop_flags(TIME_STOP_ENABLED | TIME_STOP_MARIO_AND_DOORS)
     obj.activeFlags = obj.activeFlags | ACTIVE_FLAG_INITIATED_TIME_STOP
+end
+
+---@return boolean
+local function is_current_area_sync_valid()
+    local np = gNetworkPlayers
+    for i = 1, MAX_PLAYERS - 1, 1 do
+        if np[i] and np[i].connected and
+        (not np[i].currLevelSyncValid or not np[i].currAreaSyncValid) and
+        is_player_in_local_area(gMarioStates[i]) ~= 0 then
+            return false
+        end
+    end
+    return true
 end
 
 --- @param obj Object
@@ -132,7 +143,7 @@ end
 local function spawn_object(parent, model, behavior)
     if not parent then return nil end
     local obj = spawn_sync_object(behavior, model, parent.oPosX, parent.oPosY, parent.oPosZ, nil)
-    if not obj then print("failed spawn"); return nil end
+    if not obj then error("failed spawn"); return nil end
 
     obj_copy_pos_and_angle(obj, parent)
 
@@ -157,12 +168,6 @@ local function spawn_content(parent, model, behavior, first_byte, second_byte, n
     obj.oMoveAngleYaw = nearest_mario_object and nearest_mario_object.oMoveAngleYaw or 0
     obj.globalPlayerIndex = nearest_mario_object and nearest_mario_object.globalPlayerIndex or 0
 
-    -- Not assigning a parent object breaks the cutscene
-    -- so it needs to be done manually like this
-    if obj_has_behavior_id(obj, id_bhvSpawnedStar) == 1 then
-        star_spawn_cutscene(obj)
-    end
-
     if parent.oBehParams & 0xFF000000 == 0 then
         obj.oBehParams = obj.oBehParams | first_byte << 24
     else
@@ -170,6 +175,15 @@ local function spawn_content(parent, model, behavior, first_byte, second_byte, n
     end
 
     obj.oBehParams = obj.oBehParams | (second_byte << 16)
+
+    -- Not assigning a parent object breaks the cutscene
+    -- so it needs to be done manually like this
+    if obj_has_behavior_id(obj, id_bhvSpawnedStar) == 1 then
+        star_spawn_cutscene(obj)
+        obj.oStarId = (parent.oBehParams >> 24) & 0xFF
+    end
+
+    parent.oBehParams = obj.oBehParams
 
     return obj
 end
@@ -216,21 +230,7 @@ local function exclamation_box_spawn_contents(exclamation_box_obj, desired_index
             if not spawned_object then
                 return false
             end
-
-            network_send_object(spawned_object, true)
             break
-        end
-    end
-    return true
-end
-
----@return boolean
-local function is_current_area_sync_valid()
-    local np
-    for i = 0, MAX_PLAYERS - 1, 1 do
-        np = gNetworkPlayers[i]
-        if np and np.connected and (not np.currLevelSyncValid or not np.currAreaSyncValid) then
-            return false
         end
     end
     return true
@@ -428,8 +428,8 @@ local function obj_call_action_function(obj, actionFunctions)
 end
 
 --- @param obj Object
-function bhv_custom_exclamation_box_init(obj)
-    obj.oFlags = (OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE | OBJ_FLAG_SET_FACE_YAW_TO_MOVE_YAW | OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE)
+local function bhv_custom_exclamation_box_init(obj)
+    obj.oFlags = (OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE | OBJ_FLAG_SET_FACE_YAW_TO_MOVE_YAW)
     obj.collisionData = gGlobalObjectCollisionData.exclamation_box_outline_seg8_collision_08025F78
     obj.oCollisionDistance = 300
     obj.oHomeX = obj.oPosX
@@ -444,7 +444,7 @@ function bhv_custom_exclamation_box_init(obj)
 end
 
 --- @param obj Object
-function bhv_custom_exclamation_box_loop(obj)
+local function bhv_custom_exclamation_box_loop(obj)
     cur_obj_scale(2)
     obj_call_action_function(obj, sExclamationBoxActions)
 end
@@ -461,7 +461,7 @@ end
 
 ---@param obj Object
 local function bhv_custom_spawned_star_loop(obj)
-    if obj.globalPlayerIndex == gNetworkPlayers[0].globalIndex then
+    if obj.oSyncID ~= 0 and obj.globalPlayerIndex == gNetworkPlayers[0].globalIndex then
         network_send_object(obj, true)
     end
     obj.oBehParams = obj.oBehParams | (obj.oStarId << 24)
@@ -469,6 +469,12 @@ local function bhv_custom_spawned_star_loop(obj)
     if obj.oTimer > 150 then
         obj.oIntangibleTimer = 0
     end
+
+    local model = E_MODEL_TRANSPARENT_STAR
+    if ((1 << ((obj.oBehParams >> 24) & 0xFF)) & save_file_get_star_flags(get_current_save_file_num() - 1, gNetworkPlayers[0].currCourseNum - 1)) == 0 then
+        model = E_MODEL_STAR
+    end
+    obj_set_model_extended(obj, model)
 end
 
 id_bhvSpawnedStar = hook_behavior(id_bhvSpawnedStar, OBJ_LIST_GENACTOR, false, bhv_custom_spawned_star_init, bhv_custom_spawned_star_loop, "bhvSpawnedStar")
