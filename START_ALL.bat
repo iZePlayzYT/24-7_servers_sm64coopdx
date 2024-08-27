@@ -1,47 +1,47 @@
 cd 1_vanilla
-START.bat
+start "" .\sm64coopdx.exe --savepath .
 cd..
 
 cd 2_star-road
-START.bat
+start "" .\sm64coopdx.exe --savepath .
 cd..
 
 cd 3_sm74
-START.bat
+start "" .\sm64coopdx.exe --savepath .
 cd..
 
 cd 4_sr7.5-coop-port
-START.bat
+start "" .\sm64coopdx.exe --savepath .
 cd..
 
 cd 5_dreamscape
-START.bat
+start "" .\sm64coopdx.exe --savepath .
 cd..
 
 cd 6_shining_stars
-START.bat
+start "" .\sm64coopdx.exe --savepath .
 cd..
 
 cd 7_sm74tya_sd
-START.bat
+start "" .\sm64coopdx.exe --savepath .
 cd..
 
 cd 8_star_revenge_1.5
-START.bat
+start "" .\sm64coopdx.exe --savepath .
 cd..
 
 cd 9_treasure_world
-START.bat
+start "" .\sm64coopdx.exe --savepath .
 cd..
 
 cd 10_mushroom_cup
-START.bat
+start "" .\sm64coopdx.exe --savepath .
 cd..
 
 cd 11_eureka
-START.bat
+start "" .\sm64coopdx.exe --savepath .
 cd..
 
 cd 12_galactic_journey
-START.bat
+start "" .\sm64coopdx.exe --savepath .
 cd..
