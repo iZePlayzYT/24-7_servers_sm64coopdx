@@ -1,15 +1,12 @@
 local sNightSequences = {}
 
 -- localize functions to improve performance
-local mod_storage_remove,mod_storage_load_bool,math_floor,mod_storage_save_number,mod_storage_load_number,type,error,network_is_moderator,network_is_server,string_format,djui_hud_is_pause_menu_created,obj_mark_for_deletion = mod_storage_remove,mod_storage_load_bool,math.floor,mod_storage_save_number,mod_storage_load_number,type,error,network_is_moderator,network_is_server,string.format,djui_hud_is_pause_menu_created,obj_mark_for_deletion
+local mod_storage_remove,mod_storage_load_bool,math_floor,mod_storage_save_number,mod_storage_load_number,type,error,network_is_moderator,network_is_server,string_format,djui_hud_is_pause_menu_created,smlua_audio_utils_replace_sequence,fade_volume_scale,obj_mark_for_deletion = mod_storage_remove,mod_storage_load_bool,math.floor,mod_storage_save_number,mod_storage_load_number,type,error,network_is_moderator,network_is_server,string.format,djui_hud_is_pause_menu_created,smlua_audio_utils_replace_sequence,fade_volume_scale,obj_mark_for_deletion
 
 -- purge legacy fields
 mod_storage_remove("ampm")
 
 use24h = mod_storage_load_bool("24h")
-
-local savedInMenu = false
-local autoSaveTimer = 0
 
 --- Returns the amount of days that have passed
 function get_day_count()
@@ -99,22 +96,6 @@ end
 
 function time_tick()
     gGlobalSyncTable.time = gGlobalSyncTable.time + gGlobalSyncTable.timeScale
-
-    -- auto save every 30s
-    autoSaveTimer = (autoSaveTimer + 1) % (SECOND * 30)
-    if autoSaveTimer == 0 then
-        save_time()
-    end
-
-    -- save when paused
-    if djui_hud_is_pause_menu_created() then
-        if not savedInMenu then
-            save_time()
-            savedInMenu = true
-        end
-    else
-        savedInMenu = false
-    end
 end
 
 --- @param obj Object
