@@ -1,8 +1,19 @@
-cd 1_vanilla
+@echo off
+:prompt
+set /p input=Please type "confirm" to proceed with START_ALL: 
+
+if /i "%input%"=="confirm" (
+    echo Confirmation received. Proceeding with START_ALL...
+) else (
+    echo Invalid input. Please type "confirm" to proceed with START_ALL.
+    goto prompt
+)
+
+cd 1_vanilla_A
 start "" .\sm64coopdx.exe --savepath .
 cd..
 
-cd 2_star-road
+cd 2_star-road_A
 start "" .\sm64coopdx.exe --savepath .
 cd..
 
@@ -43,5 +54,21 @@ start "" .\sm64coopdx.exe --savepath .
 cd..
 
 cd 12_galactic_journey
+start "" .\sm64coopdx.exe --savepath .
+cd..
+
+cd 13_vanilla_B
+start "" .\sm64coopdx.exe --savepath .
+cd..
+
+cd 14_vanilla_C
+start "" .\sm64coopdx.exe --savepath .
+cd..
+
+cd 15_vanilla_D
+start "" .\sm64coopdx.exe --savepath .
+cd..
+
+cd 16_star-road_B
 start "" .\sm64coopdx.exe --savepath .
 cd..
