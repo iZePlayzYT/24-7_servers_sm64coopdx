@@ -1,4 +1,8 @@
 fullscreen false
+window_x 4294967295
+window_y 4294967295
+window_w 801
+window_h 600
 vsync false
 msaa 0
 texture_filtering 2
@@ -42,6 +46,7 @@ key_disconnect ffff ffff ffff
 stick_deadzone 16
 rumble_strength 50
 gamepad_number 0
+background_gamepad 838860801
 disable_gamepads false
 use_standard_key_bindings_chat false
 bettercam_enable false
@@ -76,7 +81,7 @@ coop_host_port 7777
 coop_host_save_slot 1
 coop_join_ip 
 coop_join_port 7777
-coop_network_system 0
+coop_network_system 1
 coop_player_interaction 1
 coop_player_knockback_strength 25
 coop_stay_in_level_after_star 0
@@ -94,7 +99,7 @@ dynos_local_player_model_only false
 coopnet_ip net.coop64.us
 coopnet_port 34197
 coopnet_password 
-coopnet_dest 0
+coopnet_dest 14190982497026175654
 djui_theme 1
 djui_theme_center true
 djui_theme_font 0
